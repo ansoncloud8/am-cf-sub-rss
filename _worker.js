@@ -11,11 +11,14 @@ let upload = download;
 
 //vless://866853eb-5293-4f09-bf00-e13eb237c655@visa.com:443?encryption=none&security=tls&sni=worker.amcloud.filegear-sg.me&fp=random&type=ws&host=worker.amcloud.filegear-sg.me#youtube.com%2F%40AM_CLUB
 let mainData = `
-
+vless://98caf934-d51f-47d3-89ec-09ea781839c2@visa.cn:443?encryption=none&security=tls&sni=vless.amclubss.us.kg&fp=randomized&type=ws&host=vless.amclubss.us.kg&path=%2F%3Fed%3D2560#youtube.com%2F%40AM_CLUB%20%E8%AE%A2%E9%98%85%E9%A2%91%E9%81%93%E8%8E%B7%E5%8F%96%E6%9B%B4%E5%A4%9A%E6%95%99%E7%A8%8B
+vless://98caf934-d51f-47d3-89ec-09ea781839c2@icook.hk:443?encryption=none&security=tls&sni=vless.amclubss.us.kg&fp=randomized&type=ws&host=vless.amclubss.us.kg&path=%2F%3Fed%3D2560#t.me%2FAM_CLUBS%20%E5%8A%A0%E5%85%A5%E4%BA%A4%E6%B5%81%E7%BE%A4%E8%A7%A3%E9%94%81%E6%9B%B4%E5%A4%9A%E4%BC%98%E9%80%89%E8%8A%82%E7%82%B9
+vless://98caf934-d51f-47d3-89ec-09ea781839c2@time.is:443?encryption=none&security=tls&sni=vless.amclubss.us.kg&fp=randomized&type=ws&host=vless.amclubss.us.kg&path=%2F%3Fed%3D2560#github.com%2Famclubs%20GitHub%E4%BB%93%E5%BA%93%E6%9F%A5%E7%9C%8B%E6%9B%B4%E5%A4%9A%E9%A1%B9%E7%9B%AE
 `;
 
-//'https://trojan.amcloud.filegear-sg.me/auto'
-let urls = [];
+let urls = [
+    //'https://am.amclubs.us.kg/auto?sub'
+];
 
 let subConverter = "url.v1.mk";
 let subConfig = "https://raw.githubusercontent.com/amclubs/ACL4SSR/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini";
@@ -35,7 +38,7 @@ export default {
         subConfig = env.SUB_CONFIG || subConfig;
         fileName = env.SUB_NAME || fileName;
         mainData = env.SUB || mainData;
-        urls = env.SUB_LINK ? await addIpText(env.SUB_LINK) : [];
+        urls = env.SUB_LINK ? await addIpText(env.SUB_LINK) : urls;
 
         const currentDate = new Date();
         currentDate.setHours(0, 0, 0, 0);
@@ -50,6 +53,9 @@ export default {
         let combinedLinks = await addIpText(`${mainData}\n${urls.join('\n')}`);
         let { selfBuiltNodes, subscriptionLinks } = splitLinks(combinedLinks);
 
+        // console.log(`urls: ${urls} \n mainData: ${mainData} \n userAgent: ${userAgent}`); 
+        // console.log(`selfBuiltNodes: ${selfBuiltNodes} \n subscriptionLinks: ${subscriptionLinks} `);
+
         if (!isValidToken(token, fakeToken, url.pathname)) {
             await handleInvalidAccess(request, url, userAgent, enableTG);
             return new Response(await nginx(), { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
@@ -58,9 +64,10 @@ export default {
             const subscriptionFormat = determineSubscriptionFormat(userAgent, url);
             const subscriptionConversionURL = `${url.origin}/${await MD5MD5(fakeToken)}?token=${fakeToken}`;
 
-            const reqData = await fetchUrls(urls, subscriptionConversionURL, userAgent);
-            const uniqueResult = getUniqueLines(reqData);
-
+            const subLinksNodes = await fetchUrls(urls, subscriptionConversionURL, userAgent);
+            //console.log(`subLinksNodes: ${subLinksNodes} `);
+            const uniqueResult = getUniqueLines(subLinksNodes, selfBuiltNodes);
+            //console.log(`uniqueResult: ${uniqueResult} `);
             const response = await handleSubscriptionFormat(subscriptionFormat, uniqueResult, subscriptionConversionURL, expire);
             return response;
         }
@@ -98,18 +105,28 @@ function determineSubscriptionFormat(userAgent, url) {
         return 'singbox';
     } else if (userAgent.includes('surge') || (url.searchParams.has('surge') && !userAgent.includes('subconverter'))) {
         return 'surge';
+    } else if (userAgent.includes('Shadowrocket') || (url.searchParams.has('Shadowrocket') && !userAgent.includes('subconverter'))) {
+        return 'ss';
+    } else if (userAgent.includes('Quantumult') || (url.searchParams.has('Quantumult') && !userAgent.includes('subconverter'))) {
+        return 'quanx';
+    } else {
+        return 'auto';
     }
+    
 }
 
 async function fetchUrls(urls, subscriptionConversionURL, userAgent) {
-    const reqData = "";
+    if (!urls || urls.length === 0) {
+        return "";
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
 
     const responses = await Promise.allSettled(urls.map(url =>
         fetch(url, {
             method: 'get',
-            headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml;', 'User-Agent': `ansoncloud8/am-cf-sub-rss ${userAgent}` },
+            headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml;', 'User-Agent': `amclubs/am-cf-sub-rss ${userAgent}` },
             signal: controller.signal
         }).then(response => response.ok ? response.text() : "")
     ));
@@ -121,13 +138,14 @@ async function fetchUrls(urls, subscriptionConversionURL, userAgent) {
         .join('\n');
 }
 
-function getUniqueLines(data) {
-    const uniqueLines = new Set(data.split('\n'));
-    return [...uniqueLines].join('\n');
+function getUniqueLines(subLinksNodes, selfBuiltNodes) {
+    const uniqueSubLines = new Set(subLinksNodes.split('\n'));
+    const uniqueSelfLines = new Set(selfBuiltNodes.split('\n'));
+    return [...new Set([...uniqueSelfLines, ...uniqueSubLines])].join('\n');
 }
 
 async function handleSubscriptionFormat(format, result, subscriptionConversionURL, expire) {
-    const base64Data = btoa(result);
+    const base64Data = base64EncodeUnicode(result);
     const headers = {
         "content-type": "text/plain; charset=utf-8",
         "Profile-Update-Interval": `${subUpdateTime}`,
@@ -152,6 +170,24 @@ async function handleSubscriptionFormat(format, result, subscriptionConversionUR
         });
     }
 }
+
+function base64EncodeUnicode(str) {
+    const utf8Bytes = new TextEncoder().encode(str);
+    return btoa(String.fromCharCode(...utf8Bytes));
+}
+
+function base64DecodeUnicode(base64) {
+    const binaryStr = atob(base64);
+    const binaryLen = binaryStr.length;
+    const bytes = new Uint8Array(binaryLen);
+
+    for (let i = 0; i < binaryLen; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+    }
+
+    return new TextDecoder().decode(bytes);
+}
+
 
 function getSubconverterUrl(format, subscriptionConversionURL) {
     return `${subProtocol}://${subConverter}/sub?target=${format}&url=${encodeURIComponent(subscriptionConversionURL)}&insert=false&config=${encodeURIComponent(subConfig)}&emoji=true&list=false&tfo=false&scv=true&fdn=false&sort=false&new_name=true`;
